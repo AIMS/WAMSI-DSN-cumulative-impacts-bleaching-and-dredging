@@ -991,39 +991,6 @@ save(colony.list,file="colony_lists_for_pia.RData")
 
 load("colony_lists_for_pia.RData")
 
-# for bleached corals
-tt=unlist(lapply(colony.list,FUN=length))
-tt[grep("bleach.1",names(tt))]
-# find examples of both massive and branching for high light and high temp
-# very few examples of anything else
-#= thermal pressure (potentially alleviuated in low light conditions)
-colony.list[grep("bleach.1",names(colony.list))]
-
-# for unbleached corals
-tt=unlist(lapply(colony.list,FUN=length))
-tt[grep("bleach.0",names(tt))]
-# find examples of  low light and low temp = dredging pressure
-colony.list$Acr.poci.br_light.low_temp.low_bleach.0
-colony.list$Porit.ms_light.low_temp.low_bleach.0
-
-# find examples of low light and high temp
-# = additive effect of dredging and light
-colony.list$Acr.poci.br_light.low_temp.high_bleach.0
-colony.list$Porit.ms_light.low_temp.high_bleach.0
-
-
-# examples of high light and low temperature indicate natural conditions. I am surprise
-# there are so many, can you check these please? Probably no reason to
-# include examples unless we want to show examples of "natural" mortality
-colony.list$Acr.poci.br_light.high_temp.low_bleach.0
-colony.list$Porit.ms_light.high_temp.low_bleach.0
-
-# examples of high light and high temperature
-#= themrmal stress - colonies that didn't bleachd but probably died
-# due to heat stress.
-colony.list$Acr.poci.br_light.high_temp.high_bleach.0
-colony.list$Porit.ms_light.high_temp.high_bleach.0
-
 ### table of stats output ------------------------------------------------------
 numeric.vars=c("delta.AICc","delta.BIC",
             "wi.AICc","wi.BIC","edf")
