@@ -2,7 +2,9 @@
 
 
 require(R.utils)
-sourceDirectory("C:/Users/rfisher/OneDrive - Australian Institute of Marine Science/Documents/AIMS/Statistics and computing/Custom_functions")
+#sourceDirectory("C:/Users/rfisher/OneDrive - Australian Institute of Marine Science/Documents/AIMS/Statistics and computing/Custom_functions")
+devtools::install_github("beckyfisher/custom_functions")
+library(custom.functions.pkg)
 require(doBy)
 
 #### go get the wq data --------------------------------------------------------
@@ -14,13 +16,17 @@ dat$color=dat$Dredge.Colour.Score-dat$start.color
                  # negative values = bleaching
                  # positive values = darkening
 
+
 # scoring scale
-score.vals=
-   c(0,mean(c(0.01,0.05)),
-    mean(c(0.05,0.33)),
-    mean(c(0.33,0.66)),
-    mean(c(0.66,0.95)),
-    mean(c(0.95,0.99)),1)
+score.list=list(c.1=0,
+     c.2=c(0.01,0.05),
+    c.3=c(0.05,0.33),
+    c.4=c(0.33,0.66),
+    c.5=c(0.66,0.95),
+    c.6=c(0.95,0.99),
+    c.7=1)
+
+score.vals=unlist(lapply(score.list,FUN=mean))
 
 # bleaching data
 dat$prop.bleach=score.vals[dat$Thermal.Bleaching]
@@ -46,6 +52,12 @@ use.colonies.index=which(is.na(match(dat$ColID,
                             as.character(unique(dat[which(dat$j.date<0 &
                                           dat$Mortality>3),"ColID"]))))!=F)
 dat=dat[use.colonies.index,]
+# summary of colonies by site
+dat$index=1
+x=summaryBy(index~Family+use.group+Site.Code+ColID,FUN=sum,data=dat)
+x$index=1
+xx=summaryBy(index~Family+use.group+Site.Code,FUN=sum,data=x)
+xx[which(is.na(xx$use.group)==F),]
 
 
 ### --- create some lagged colony variables (ie state of last image) -----------
@@ -188,11 +200,8 @@ site.porit.rep=summaryBy(index.sum~Site.Code,FUN=max,data=site.dat.index[
 range(site.porit.rep$index.sum.max)
 median(site.porit.rep$index.sum.max)
 
-
 length(unique(dat.use$ColID[which(dat.use$use.group=="Acr.poci.br")]))
 length(unique(dat.use$ColID[which(dat.use$use.group=="Porit.ms")]))
-
-
 
 dat=site.dat
 
@@ -364,8 +373,130 @@ pathDiagram(fit.out$Porit.ms,edge.labels ="values",file = paste("Porit.ms","path
 #Acr.poci.br
 pathDiagram(fit.out$Acr.poci.br,edge.labels ="values",file = paste("Acr.poci.br","pathDiagram",sep=""),standardize=T)
 
+######### Basic site level summary #############################################
+use.groups=na.omit(unique(as.character(dat$use.group)))
+#phases=c("p1","p2","p3")
+#phase.dates.list=list(p1=c(1,189),p2=c(189,377),p3=c(377,565))
+dat.use=dat.use[which(is.na(dat.use$use.group)!=TRUE),]
+dd=summaryBy(Mortality+dif.mort+prop.mort~use.group+Site.Code+ColID,FUN=c(min,max),data=dat.use)
+dd$dif.val=dd$prop.mort.max-dd$prop.mort.min
+dd$check.sudden.death=dd$dif.val-dd$dif.mort.max
 
-############ gam analysis mortality ############################################
+dd[which(dd$Mortality.max==7 & dd$check.sudden.death==0),]
+write.csv(dd[which(dd$Mortality.max==7),],file="whole_colony_deaths.csv")
+
+dd$index=1
+temp.range=range(round(dat$temp.max.28days.prev), na.rm=T)
+temp.vec=temp.range[1]:temp.range[2]
+temp.cols=rev(colorRampPalette(c("red","yellow","blue"))(length(temp.vec)))#rainbow(length(dist.vec),start=0,end=.7)#rgb( ramp(seq(0, 1, length = length(dist.vec))), max = 255)
+dat$temp.cols=temp.cols[match(round(dat$temp.max.28days.prev),temp.vec)]  # heat.colors(length(dist.vec))#rainbow(length(dist.vec))#
+dat$Site.Code=reorder(dat$Site.Code, dat$dist.d, FUN = mean,
+        order = is.ordered(dat$Site.Code))
+
+dat.use$Site.Code=reorder(dat.use$Site.Code, dat.use$dist.d, FUN = mean,
+        order = is.ordered(dat.use$Site.Code))
+
+
+pretty.titles=c("Branching","Massive")
+require(mgcv)
+
+### by site. code
+pdf(file="raw_mortality_plots.pdf",width=6.5, height=5, pointsize=10, onefile=T)
+par(mfrow=c(2,3),oma=c(1,1,4,1),mar=c(2,2,2,2),oma=c(3,2,2,2),bty="n",xpd=NA)
+site.dat.list=list()
+for(p in 1:length(use.groups)){
+dd.p=dd[which(dd$use.group==use.groups[p]),]
+f.dd.p=as.data.frame.matrix(xtabs(index~Site.Code+Mortality.max, data=dd.p))
+colnames(f.dd.p)=paste("Mcat.",colnames(f.dd.p),sep="")
+f.dd.p$Site.Code=rownames(f.dd.p)
+f.dd.p$n.colonies=rowSums(f.dd.p[,paste("Mcat.",1:7,sep="")] )
+
+dat.use.p=dat.use[which(dat.use$use.group==use.groups[p]),]
+dat.use.p$index=1
+dat.p=dat[which(dat$use.group==use.groups[p]),]
+dat.p=dat.p[order(dat.p$temp.max.28days.prev),]#,decreasing=T),]
+site.dat.p=summaryBy(dif.mort~Site.Code+dist.d+site.category,  data=dat.p, FUN=c(mean,sd),na.rm=T)
+site.dat.p=merge(site.dat.p,f.dd.p)
+site.dat.p$Site.Code=reorder(site.dat.p$Site.Code, site.dat.p$dist.d, FUN = mean,
+        order = is.ordered(site.dat.p$Site.Code))
+site.dat.p=site.dat.p[order(site.dat.p$dist.d),]
+plot.mat=t(as.matrix(site.dat.p[,paste("Mcat.",1:7,sep="")]))
+
+# raw scores at end of dredging
+barplot.cols=colorRampPalette(c("blue","cyan","green","yellow","orange","red"))(nrow(plot.mat))
+mids=barplot(plot.mat,col=barplot.cols,names.arg=rep(NA,ncol(plot.mat)))
+legend("topleft", paste(letters[p],pretty.titles[p]),bty="n", inset=c(-0.07,-0.03),cex=1.2)
+
+if(p==1){axis(side=3,at=mids,
+              labels=levels(dat.p$Site.Code),las=2)
+         legend("left",legend=
+              c("0","1-5","6-33","33-66","66-95","95-99","100"),pch=15,col=barplot.cols,
+                title="Mortality (%)",title.adj=0,inset=0.02,bty="n",pt.cex=1.2,ncol=1)
+}
+
+if(p==2){axis(side=1,at=mids,
+              labels=signif(site.dat.p$dist.d,2),las=2)
+}
+
+# raw partial mortality between surveys
+plot(jitter(as.numeric(dat.use.p$Site.Code),factor=0.5),#jitter(dat.use.p$dist.d,factor=500),
+     jitter(dat.use.p$dif.mort,factor=20),
+             ylim=c(0,1.1), xaxt="n", cex=1.2,
+             col=adjustcolor("black",alpha=0.4),pch=1,xlab="",ylab="")
+if(p==1){axis(side=3,at=1:length(levels(site.dat.p$Site.Code)),
+              labels=levels(site.dat.p$Site.Code),las=2)
+}
+legend("topleft", letters[3:4][p],bty="n", inset=c(-0.07,-0.03),cex=1.2)
+
+# mean partial mortality between surveys
+par(new=T)
+plot(as.numeric(site.dat.p$Site.Code),
+ site.dat.p$dif.mort.mean,
+ xlab="",ylab="", xaxt="n",yaxt="n",ylim=c(0,0.04),col="red",pch=17,cex=1.2)
+lines(as.numeric(site.dat.p$Site.Code),site.dat.p$dif.mort.mean,lty=3,col=2)
+axis(side=4)
+
+if(p==2){axis(side=1,at=1:length(levels(site.dat.p$Site.Code)),
+              labels=signif(site.dat.p$dist.d,2),las=2)}
+
+# proportion of colonies showing some bleaching
+plot(jitter(as.numeric(dat.p$Site.Code)),#jitter(dat.p$dist.d,factor=1000),
+             xaxt="n",
+     jitter(dat.p$bleach.event/dat.p$bleach.index,factor=50),
+             ylim=c(0,1.1), cex=(dat.p$bleach.index/max(dat.p$bleach.index))+1,
+             col=adjustcolor(dat.p$temp.cols,alpha=0.2),pch=16,xlab="",ylab="",yaxt="n")
+legend("topleft", letters[5:6][p],bty="n", inset=c(-0.07,-0.03),cex=1.2)
+
+axis(side=4)
+if(p==2){axis(side=1,at=1:length(levels(site.dat.p$Site.Code)),
+              labels=signif(site.dat.p$dist.d,2),las=2)}
+if(p==1){axis(side=3,at=1:length(levels(dat.p$Site.Code)),
+              labels=levels(dat.p$Site.Code),las=2)
+         legend("topleft",legend=temp.vec[seq(1,12,by=2)],pch=16,
+                title="Temperature 0C",bty="n",pt.cex=1.2,inset=c(0.04,0),
+                col=adjustcolor(temp.cols[seq(1,12,by=2)],alpha=0.2))
+legend("top",
+       legend=round(seq(min(dat.p$bleach.index),max(dat.p$bleach.index),length=5)),
+       pt.cex=(round(seq(min(dat.p$bleach.index),max(dat.p$bleach.index),length=5))/
+          max(dat.p$bleach.index))+1,pch=16,col="darkgrey",bty="n",
+          title="n. colonies",xpd=NA)
+}
+
+site.dat.list=c(site.dat.list,list(site.dat=site.dat.p,
+                total=colSums(site.dat.p[,
+                c("Mcat.1","Mcat.2","Mcat.3","Mcat.4","Mcat.5","Mcat.6","Mcat.7","n.colonies")]),
+                means=colMeans(site.dat.p[,c(
+                "dif.mort.mean","dif.mort.sd")])))
+}
+mtext(side=1,text="Distance from Dredging (km)",outer=T,line=1)
+mtext(side=2,text="Frequency of final mortality scores",outer=T)
+mtext(side=2,text="Partial mortality events",outer=T, line= -18)
+mtext(side=4,text="Proportion of bleached colonies",outer=T)
+mtext(side=4,text="Mean partial mortality rate",outer=T,line=-18)
+dev.off()
+site.dat.list
+
+############ gam analysis ######################################################
 dat.gam=dat[,c("j.date","Site.Code","FSN","use.group")]
 dat.gam$SSC=dat$ntu.max.28days.prev
 dat.gam$light=dat$light.max.28days.prev
@@ -410,11 +541,6 @@ require(mgcv); require(MuMIn); require(doParallel); require(gamm4)
 #model.1=uGamm(response.mat~t2(light,temperature, by=use.group,k=4,bs="cr"),
 #             random=~(1|Site.Code),
 #             family="binomial",data=dat.c,lme4=T)
-##require(car)
-##dat.c$response=logit(dat.c$prop.bleach.ratio)
-##model.1=uGamm(response~s(light,k=4,bs="cr"),
-##             random=~(1|Site.Code),# + 1|ColID),# +(1|FSN)
-##             family="gaussian",data=dat.c,lme4=T)
 #summary(model.1$gam)
 #
 #out.list=full.subsets.gam(use.dat=dat.c,        #       check.model.set
