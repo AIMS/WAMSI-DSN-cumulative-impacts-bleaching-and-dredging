@@ -401,8 +401,10 @@ pretty.titles=c("Branching","Massive")
 require(mgcv)
 
 ### by site. code
-pdf(file="raw_mortality_plots.pdf",width=6.5, height=5, pointsize=10, onefile=T)
-par(mfrow=c(2,3),oma=c(1,1,4,1),mar=c(2,2,2,2),oma=c(3,2,2,2),bty="n",xpd=NA)
+alpha.val=0.5
+
+pdf(file="raw_mortality_plots.pdf",width=6.4, height=7, pointsize=12, onefile=T)
+par(mfcol=c(3,2),oma=c(4,4,6,4),mar=c(0.5,0.5,0.5,0.5),bty="n",xpd=NA)
 site.dat.list=list()
 for(p in 1:length(use.groups)){
 dd.p=dd[which(dd$use.group==use.groups[p]),]
@@ -423,29 +425,29 @@ site.dat.p=site.dat.p[order(site.dat.p$dist.d),]
 plot.mat=t(as.matrix(site.dat.p[,paste("Mcat.",1:7,sep="")]))
 
 # raw scores at end of dredging
-barplot.cols=colorRampPalette(c("blue","cyan","green","yellow","orange","red"))(nrow(plot.mat))
-mids=barplot(plot.mat,col=barplot.cols,names.arg=rep(NA,ncol(plot.mat)))
-legend("topleft", paste(letters[p],pretty.titles[p]),bty="n", inset=c(-0.07,-0.03),cex=1.2)
-
-if(p==1){axis(side=3,at=mids,
-              labels=levels(dat.p$Site.Code),las=2)
-         legend("left",legend=
+barplot.cols=colorRampPalette(c("white","yellow","orange","red","purple","black"))(nrow(plot.mat))
+mids=barplot(plot.mat,col=barplot.cols,names.arg=rep(NA,ncol(plot.mat)),ylim=c(0,37),
+             xaxt="n",yaxt="n")
+legend("topleft", letters[p],bty="n", inset=c(-0.07,-0.03),cex=1.2)
+axis(side=3,at=mids,labels=levels(dat.p$Site.Code),las=2)
+ mtext(side=3,"Site",outer=F,line=3.5)
+mtext(side=3,pretty.titles[p],outer=F,line=4.5)
+if(p==1){
+ legend("left",legend=
               c("0","1-5","6-33","33-66","66-95","95-99","100"),pch=15,col=barplot.cols,
                 title="Mortality (%)",title.adj=0,inset=0.02,bty="n",pt.cex=1.2,ncol=1)
-}
-
-if(p==2){axis(side=1,at=mids,
-              labels=signif(site.dat.p$dist.d,2),las=2)
+ axis(side=2,at=c(0,10,20,30),labels=c(0,10,20,30))
+ mtext(side=2,"Number of colonies",outer=F,line=2)
 }
 
 # raw partial mortality between surveys
 plot(jitter(as.numeric(dat.use.p$Site.Code),factor=0.5),#jitter(dat.use.p$dist.d,factor=500),
      jitter(dat.use.p$dif.mort,factor=20),
-             ylim=c(0,1.1), xaxt="n", cex=1.2,
+             ylim=c(0,1.1), xaxt="n",yaxt="n", cex=1.2,
              col=adjustcolor("black",alpha=0.4),pch=1,xlab="",ylab="")
-if(p==1){axis(side=3,at=1:length(levels(site.dat.p$Site.Code)),
-              labels=levels(site.dat.p$Site.Code),las=2)
-}
+if(p==1){
+ axis(side=2)
+ mtext(side=2,text="Partial mortality events",outer=T,line=2)}
 legend("topleft", letters[3:4][p],bty="n", inset=c(-0.07,-0.03),cex=1.2)
 
 # mean partial mortality between surveys
@@ -454,31 +456,33 @@ plot(as.numeric(site.dat.p$Site.Code),
  site.dat.p$dif.mort.mean,
  xlab="",ylab="", xaxt="n",yaxt="n",ylim=c(0,0.04),col="red",pch=17,cex=1.2)
 lines(as.numeric(site.dat.p$Site.Code),site.dat.p$dif.mort.mean,lty=3,col=2)
-axis(side=4)
-
-if(p==2){axis(side=1,at=1:length(levels(site.dat.p$Site.Code)),
-              labels=signif(site.dat.p$dist.d,2),las=2)}
+if(p==2){
+ axis(side=4)
+ mtext(side=4,text="Mean partial mortality rate",outer=T,line=2)}
 
 # proportion of colonies showing some bleaching
 plot(jitter(as.numeric(dat.p$Site.Code)),#jitter(dat.p$dist.d,factor=1000),
              xaxt="n",
      jitter(dat.p$bleach.event/dat.p$bleach.index,factor=50),
              ylim=c(0,1.1), cex=(dat.p$bleach.index/max(dat.p$bleach.index))+1,
-             col=adjustcolor(dat.p$temp.cols,alpha=0.2),pch=16,xlab="",ylab="",yaxt="n")
+             col=adjustcolor(dat.p$temp.cols,alpha=alpha.val),pch=16,xlab="",ylab="",yaxt="n")
 legend("topleft", letters[5:6][p],bty="n", inset=c(-0.07,-0.03),cex=1.2)
 
-axis(side=4)
-if(p==2){axis(side=1,at=1:length(levels(site.dat.p$Site.Code)),
-              labels=signif(site.dat.p$dist.d,2),las=2)}
-if(p==1){axis(side=3,at=1:length(levels(dat.p$Site.Code)),
-              labels=levels(dat.p$Site.Code),las=2)
-         legend("topleft",legend=temp.vec[seq(1,12,by=2)],pch=16,
+if(p==1){
+ axis(side=2)
+ legend("topleft",legend=temp.vec[seq(1,12,by=2)],pch=16,
                 title="Temperature 0C",bty="n",pt.cex=1.2,inset=c(0.04,0),
-                col=adjustcolor(temp.cols[seq(1,12,by=2)],alpha=0.2))
-legend("top",
+                col=adjustcolor(temp.cols[seq(1,12,by=2)],alpha=alpha.val))
+ mtext(side=2,"Proportion bleached",outer=F,line=2) }
+
+axis(side=1,at=1:length(levels(site.dat.p$Site.Code)),
+              labels=signif(site.dat.p$dist.d,2),las=2)
+
+if(p==2){
+legend("topleft",
        legend=round(seq(min(dat.p$bleach.index),max(dat.p$bleach.index),length=5)),
        pt.cex=(round(seq(min(dat.p$bleach.index),max(dat.p$bleach.index),length=5))/
-          max(dat.p$bleach.index))+1,pch=16,col="darkgrey",bty="n",
+          max(dat.p$bleach.index))+1,pch=16,col="darkgrey",bty="n",inset=c(0.04,0),
           title="n. colonies",xpd=NA)
 }
 
@@ -488,13 +492,10 @@ site.dat.list=c(site.dat.list,list(site.dat=site.dat.p,
                 means=colMeans(site.dat.p[,c(
                 "dif.mort.mean","dif.mort.sd")])))
 }
-mtext(side=1,text="Distance from Dredging (km)",outer=T,line=1)
-mtext(side=2,text="Frequency of final mortality scores",outer=T)
-mtext(side=2,text="Partial mortality events",outer=T, line= -18)
-mtext(side=4,text="Proportion of bleached colonies",outer=T)
-mtext(side=4,text="Mean partial mortality rate",outer=T,line=-18)
+
 dev.off()
-site.dat.list
+
+#site.dat.list
 
 ############ gam analysis ######################################################
 dat.gam=dat[,c("j.date","Site.Code","FSN","use.group")]
